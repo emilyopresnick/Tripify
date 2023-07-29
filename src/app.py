@@ -1,8 +1,6 @@
-from flask import Flask, request, render_template, jsonify,url_for,redirect, session, url_for
-import webbrowser, spotipy, math
-import spotipy.util as util
+from flask import Flask, render_template, session
+import webbrowser
 from spotipy.oauth2 import SpotifyOAuth
-from spotipy import Spotify
 import json, os
 
 app = Flask(__name__)
@@ -28,6 +26,12 @@ client_secret=secrets["client_secret"]
 TOKEN_INFO='token_info'
 
 
+# Default page
+@app.route("/")
+def deefaultPage():
+	return render_template('home.html')
+
+
 #Log in
 @app.route("/login")
 def SpotifyLogin():
@@ -35,8 +39,7 @@ def SpotifyLogin():
     auth_url = sp_oauth.get_authorize_url()
     return redirect(auth_url)
 
-#logs out user from application by logging out of spotify
-@app.route("/logout")
+#Logs out from Spotify
 def SpotifyLogout():
     session.clear()
     if os.path.exists(".cache"):
@@ -45,7 +48,7 @@ def SpotifyLogout():
     return render_template('home.html', message="You have been logged out.")
 
 
-#creates spotify oauth object
+#Creates spotify oauth object
 def create_spotify_oauth():
     return SpotifyOAuth(
             client_id=secrets["client_id"],
