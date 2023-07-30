@@ -1,10 +1,10 @@
-from flask import Flask, render_template, redirect, session, requests
+from flask import Flask, render_template, redirect, session
+import requests
 import webbrowser
 from spotipy.oauth2 import SpotifyOAuth
 import json, os
 
 app = Flask(__name__)
-
 
 # OAuth
 app.secret_key = "super secret key"
@@ -29,8 +29,8 @@ TOKEN_INFO='token_info'
 # Default page
 @app.route("/")
 def defaultPage():
-    fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
-    print(fart)
+    ##fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
+    ##print(fart)
     return render_template("home.html")
 
 
@@ -73,10 +73,9 @@ def getTripDuration(orgin, destination, transportation):
     except:
         return "invalid location"
     
-    
 def getPlaylist(duration):
     return "need to implement"
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(debug=True)
