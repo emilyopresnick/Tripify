@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session
+from flask import Flask, render_template, redirect, session
 import webbrowser
 from spotipy.oauth2 import SpotifyOAuth
 import json, os
