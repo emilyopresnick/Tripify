@@ -1,8 +1,6 @@
-from flask import Flask, render_template, redirect, session
-import requests
-import webbrowser
+from flask import Flask, render_template, redirect, session, request
+import webbrowser, time, requests, json, os, random
 from spotipy.oauth2 import SpotifyOAuth
-import json, os
 
 app = Flask(__name__)
 
@@ -29,12 +27,28 @@ TOKEN_INFO='token_info'
 # Default page
 @app.route("/")
 def defaultPage():
-    ##fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
-    ##print(fart)
-    return render_template("home.html")
+   ## fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
+   ## print(fart)
+   print(getSavedSongs)
+   return render_template("home.html")
 
 
-#Log in
+@app.route("/redirect/")
+def redirectPage():
+    #gets the access code from oauth to exchange for the access token
+    sp_oauth=create_spotify_oauth()
+    session.clear()
+    code=request.args.get('code')
+    token_info = sp_oauth.get_access_token(code)
+    session[TOKEN_INFO]=token_info
+    try: 
+        token_info=get_access_token()
+    except:
+         #user not logged in
+         return redirect("/")
+
+
+#Log in to spotify
 @app.route("/login")
 def SpotifyLogin():
     sp_oauth = create_spotify_oauth()
@@ -60,6 +74,21 @@ def create_spotify_oauth():
                 'playlist-modify-private', 'playlist-read-private', 'user-library-modify', 
                 'user-library-read', 'user-top-read'])
 
+#gets the access token from spotify oauth and refreshes if expired
+def get_access_token():
+    token_info = session.get(TOKEN_INFO, None)
+    if not token_info:
+         raise "exception"
+    now = int(time.time())
+    is_expired = token_info['expires_at'] - now < 60
+    if is_expired:
+         sp_oauth = create_spotify_oauth()
+         token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
+    #store headers in session variable for api requests
+    headers = {'Authorization': 'Bearer {token}'.format(token=token_info['access_token'])}
+    session['headers']=headers
+    return token_info 
+
 
 def getTripDuration(orgin, destination, transportation):
     url = "https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=" + orgin +"&destinations=" + destination +"&mode=" + transportation + "&key=" + googleMapsKey
@@ -67,14 +96,106 @@ def getTripDuration(orgin, destination, transportation):
     headers = {}
     try:
         response = requests.request("GET", url, headers=headers, data=payload)
-        if response.status_code >= 200 and response.status_code < 300:
-            results = response.json
-            return results["rows"]["elements"]["distance"]["text"]
+        results = response.json()
+        return results["rows"][0]["elements"][0]["duration"]["text"]
     except:
         return "invalid location"
     
-def getPlaylist(duration):
+def getPlaylist(duration, orgin, destination):
+    headers=session["headers"]
+
+    #get user name
+    r=requests.get(BASE_URL + "me", headers=headers)
+    r=r.json()
+    userName = r['display_name']
+    
+    #make empty spotify playlist
+    r = f"https://api.spotify.com/v1/users/{userName}/playlists"
+    request_body = json.dumps({
+           "name": "Tripify: "+ orgin + " to " + destination,
+         })
+    response = requests.post(url = r, data = request_body, headers=headers)
+    playlist_id = response.json()['id']
+
+
+    #get users saved tracks
+    savedSongs=[]
+    r=requests.get(BASE_URL + "me/tracks?limit=50", headers=headers)
+    r=r.json()
+    for track in r["items"]["track"]: 
+        savedSongs.append(track["id"])
     return "need to implement"
+
+
+def getSavedSongs(headers):
+    savedSongs=[]
+    url = BASE_URL + "me/tracks?limit=50"
+    hasNext = True
+    while (hasNext):
+        r=requests.get(url, headers=headers)
+        r=r.json()
+        for track in r['items']:
+                id = track['track']['id']
+                newReq = BASE_URL + "audio-features?ids=" + id
+                req = newReq.json()
+                duration = req['audio_features'][0]['duration_ms']
+
+                track_info = {
+                    'name': track['track']['name'],
+                    'artist': track['track']['artist'],
+                    'duration': duration / 1000
+                }
+
+                savedSongs.append(track_info)
+
+        if "next" in url:
+            url=r["next"]
+        else:
+            hasNext = False
+        
+
+def getGenres(headers):
+    genres=[]
+    url = BASE_URL + "me/top/artists"
+    hasNext = True
+    
+    while (hasNext):
+        r=requests.get(url, headers=headers)
+        r=r.json()
+        for artists in r['items']:
+            genres.append((artists['genres']))
+
+        if "next" in url:
+            url=r["next"]
+        else:
+            hasNext = False
+
+    flatlist=[element for sublist in genres for element in sublist]
+    genreList = [*set(flatlist)]
+
+def getRecs(headers):
+    recSongs = []
+    genres = getGenres(headers)
+    randomGenres = (random.choices(genres, k=3))
+    r=requests.get(BASE_URL + "recommendations/?seed_genres=" + randomGenres + "&limit=50", headers=headers)
+    r=r.json()
+    for album in r['tracks']:
+        track_info = {
+                        'name': album['track']['name'],
+                        'artist': album['track']['artist'],
+                        'duration': album['duration_ms'] / 1000
+                    }
+
+        recSongs.append(track_info)
+    return getRecs
+
+def getDuration(track):
+    return track['duration']
+
+def sortByDuration(list):
+    #TODO
+    return 0
+
 
 
 if __name__ == "__main__":
