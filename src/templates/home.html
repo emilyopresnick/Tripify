@@ -16,9 +16,29 @@
             <li><a href="#">About Us</a></li>
             <li><a href="#">Contact</a></li>
             <li><a href="#">Stats</a></li>
-            <li><a href="#">Login</a></li>
+            <li><a href="/login">Login</a></li>
         </ul>
     </nav>
 </body>
-<body class="main-page"></body>
+<body>
+<article class="main-page">
+    <div>
+        On a road trip? Tripify your ride!
+    </div>
+    <p>How are you getting to your destination?</p>
+    <form method="get" action="/login">
+        <input type="radio" id="Walking" name="transportation" value="Walking">
+        <label for="Walking">Walking</label><br>
+        <input type="radio" id="Biking" name="transportation" value="Biking">
+        <label for="Biking">Biking</label><br>
+        <input type="radio" id="Driving" name="transportation" value="Driving">
+        <label for="Driving">Driving</label><br>
+        <label for="start">Start Location:</label><br>
+        <input type="text" id="start" name="start"><br>
+        <label for="end">Destination:</label><br>
+        <input type="text" id="end" name="end">
+        <button type="submit">Submit</button>
+    </form>
+</article>
+</body>
 </html>

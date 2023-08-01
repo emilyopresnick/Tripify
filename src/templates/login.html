@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://kit.fontawesome.com/535e433fee.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/main.css') }}">
+</head>
+<body>
+    <nav>
+        <input type="checkbox" id="check">
+        <label for="check" class="checkbtn">
+            <i class="fas fa-bars"></i>
+        </label>
+        <label class="logo">Tripify</label>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">Contact</a></li>
+            <li><a href="#">Stats</a></li>
+            <li><a class ="active" href="#">Login</a></li>
+        </ul>
+    </nav>
+
+</body>
+<body>
+<div>Login with Spotify to generate your playlist:
+    <form method="GET", action="/login">
+        <button>Link Spotify</button>
+    </form>
+</div>
+</body>
+</html>
