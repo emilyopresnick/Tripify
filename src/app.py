@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, session, request
+from flask import Flask, render_template, redirect, session, request, url_for
 import webbrowser, time, requests, json, os, random
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -29,8 +29,13 @@ TOKEN_INFO='token_info'
 def defaultPage():
    ## fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
    ## print(fart)
-   print(getSavedSongs)
-   return render_template("home.html")
+   #print(getSavedSongs)
+   return render_template("login.html")
+
+
+@app.route("/home")
+def homePage():
+    return render_template("home.html")
 
 
 @app.route("/redirect/")
@@ -41,11 +46,12 @@ def redirectPage():
     code=request.args.get('code')
     token_info = sp_oauth.get_access_token(code)
     session[TOKEN_INFO]=token_info
-    try: 
-        token_info=get_access_token()
-    except:
-         #user not logged in
-         return redirect("/")
+    token_info = getAccessToken()
+    headers=session['headers']
+    session['genres'] = getGenres(headers)
+    getSavedSongs(headers)
+   
+    return redirect(url_for('homePage', _external=True))
 
 
 #Log in to spotify
@@ -75,7 +81,7 @@ def create_spotify_oauth():
                 'user-library-read', 'user-top-read'])
 
 #gets the access token from spotify oauth and refreshes if expired
-def get_access_token():
+def getAccessToken():
     token_info = session.get(TOKEN_INFO, None)
     if not token_info:
          raise "exception"
@@ -128,7 +134,7 @@ def getPlaylist(duration, orgin, destination):
 
 
 def getSavedSongs(headers):
-    savedSongs=[]
+    savedSongs={}
     url = BASE_URL + "me/tracks?limit=50"
     hasNext = True
     while (hasNext):
@@ -136,22 +142,24 @@ def getSavedSongs(headers):
         r=r.json()
         for track in r['items']:
                 id = track['track']['id']
-                newReq = BASE_URL + "audio-features?ids=" + id
+                
+                newReq = requests.get(BASE_URL + "audio-features?ids=" + id, headers = headers)
                 req = newReq.json()
-                duration = req['audio_features'][0]['duration_ms']
+                durationMS = req['audio_features'][0]['duration_ms']
 
-                track_info = {
-                    'name': track['track']['name'],
-                    'artist': track['track']['artist'],
-                    'duration': duration / 1000
-                }
+                name = track['track']['name']
+                artist = track['track']['artists'][0]['name']
+                duration =  durationMS / 1000
+                
 
-                savedSongs.append(track_info)
+                savedSongs[name] = (artist, duration)
 
-        if "next" in url:
-            url=r["next"]
+        if (r['next'] is None):
+           hasNext = False
         else:
-            hasNext = False
+             url=r["next"]
+
+    return savedSongs
         
 
 def getGenres(headers):
@@ -172,6 +180,7 @@ def getGenres(headers):
 
     flatlist=[element for sublist in genres for element in sublist]
     genreList = [*set(flatlist)]
+    return genreList
 
 def getRecs(headers):
     recSongs = []
