@@ -29,7 +29,6 @@ TOKEN_INFO='token_info'
 def defaultPage():
    ## fart = getTripDuration("Boston, MA", "Salem, MA", "Driving")
    ## print(fart)
-   #print(getSavedSongs)
    return render_template("login.html")
 
 
@@ -48,8 +47,17 @@ def redirectPage():
     session[TOKEN_INFO]=token_info
     token_info = getAccessToken()
     headers=session['headers']
-    session['genres'] = getGenres(headers)
-    getSavedSongs(headers)
+
+    topSongs = getTopTracks(headers, "medium")
+    print(len(topSongs))
+    savedSongs = getSavedSongs(headers, 0, 50)
+    print(len(savedSongs))
+    recSongs = getRecs(headers)
+    print(len(recSongs))
+    allSongs = topSongs | savedSongs | recSongs
+    print(len(allSongs))
+    print(allSongs)
+    
    
     return redirect(url_for('homePage', _external=True))
 
@@ -124,84 +132,106 @@ def getPlaylist(duration, orgin, destination):
     playlist_id = response.json()['id']
 
 
-    #get users saved tracks
-    savedSongs=[]
-    r=requests.get(BASE_URL + "me/tracks?limit=50", headers=headers)
-    r=r.json()
-    for track in r["items"]["track"]: 
-        savedSongs.append(track["id"])
     return "need to implement"
 
-
-def getSavedSongs(headers):
+#get certain amount of users saved songs, if we want all of the saved songs then set amt = 10,000
+def getSavedSongs(headers, offset, amt):
+    limit = 50
+    if(amt < limit):
+        limit = amt
     savedSongs={}
-    url = BASE_URL + "me/tracks?limit=50"
+    url = BASE_URL + "me/tracks?limit=" + str(limit) + "&offset=" + str(offset)
+    while (amt > 0):
+        r=requests.get(url, headers=headers)
+        r=r.json()
+
+        #if offset is greater than amount of liked songs, items will be blank so return empty dictionary
+        if (r['items'] == []):
+            break
+
+        for track in r['items']:
+                
+                id = track['track']['id']
+                
+                
+                name = track['track']['name']
+                artist = track['track']['artists'][0]['name']
+                duration = track['track']['duration_ms'] /1000
+                
+                savedSongs[id] = (name, artist, duration)
+
+        #If there are no more liked songs
+        if (r['next'] is None):
+           amt = 0
+
+        #Because the API call is for limit of 50, after each call decrease amt by 50
+        #update the URL to get the next songs
+        else:
+            amt -= 50
+            url=r["next"]
+
+    return savedSongs
+        
+
+def getRecs(headers):
+    recSongs = {}
+
+    r = requests.get(BASE_URL + "recommendations/available-genre-seeds", headers=headers)
+    r=r.json()
+    availGenre = []
+
+    for genres in r['genres']:
+        availGenre.append(genres)
+    randomGenres = (random.choices(availGenre, k=3))
+    randomGenres = ','.join(randomGenres)
+    
+    r=requests.get(BASE_URL + "recommendations/?seed_genres=" + randomGenres + "&limit=50", headers=headers)
+    r=r.json()
+    for album in r['tracks']:
+        id = album['id']
+        name = album['name']
+        artist =  album['artists'][0]['name']
+        duration = album['duration_ms']
+
+        recSongs[id] = (name, artist, duration)
+
+    return recSongs
+
+def getTopTracks(headers, timeRange):
+    if (timeRange == "short"):
+        ADD_ON ="me/top/tracks?limit=50&time_range=short_term"
+    elif (timeRange == "long"):
+        ADD_ON = "me/top/tracks?limit=50&time_range=long_term"
+    else:
+        ADD_ON = "me/top/tracks?limit=50"
+
+    tracks={}
+    url = BASE_URL + ADD_ON
     hasNext = True
     while (hasNext):
         r=requests.get(url, headers=headers)
         r=r.json()
         for track in r['items']:
-                id = track['track']['id']
+                id = track['id']
+                name = track['name']
+                artist = track['artists'][0]['name']
+                duration =  track['duration_ms'] / 1000
                 
-                newReq = requests.get(BASE_URL + "audio-features?ids=" + id, headers = headers)
-                req = newReq.json()
-                durationMS = req['audio_features'][0]['duration_ms']
-
-                name = track['track']['name']
-                artist = track['track']['artists'][0]['name']
-                duration =  durationMS / 1000
-                
-
-                savedSongs[name] = (artist, duration)
+                tracks[id] = (name, artist, duration)
 
         if (r['next'] is None):
            hasNext = False
         else:
              url=r["next"]
 
-    return savedSongs
-        
+    return tracks
 
-def getGenres(headers):
-    genres=[]
-    url = BASE_URL + "me/top/artists"
-    hasNext = True
-    
-    while (hasNext):
-        r=requests.get(url, headers=headers)
-        r=r.json()
-        for artists in r['items']:
-            genres.append((artists['genres']))
-
-        if "next" in url:
-            url=r["next"]
-        else:
-            hasNext = False
-
-    flatlist=[element for sublist in genres for element in sublist]
-    genreList = [*set(flatlist)]
-    return genreList
-
-def getRecs(headers):
-    recSongs = []
-    genres = getGenres(headers)
-    randomGenres = (random.choices(genres, k=3))
-    r=requests.get(BASE_URL + "recommendations/?seed_genres=" + randomGenres + "&limit=50", headers=headers)
-    r=r.json()
-    for album in r['tracks']:
-        track_info = {
-                        'name': album['track']['name'],
-                        'artist': album['track']['artist'],
-                        'duration': album['duration_ms'] / 1000
-                    }
-
-        recSongs.append(track_info)
-    return getRecs
 
 def getDuration(track):
     return track['duration']
 
-def sortByDuration(list):
+#sort by shortest to longest
+def sortByDuration(trackDict):
     #TODO
     return 0
 
