@@ -13,18 +13,26 @@ label.logo{
     font-weight: bold;
     line-height: 80px;
 }
-.main-page{
+.main-form{
     background-color:#c7af87;
     color: white;
     text-align: center;
+    width: 60%;
     font-size: 36px;
     font-weight: bold;    
 }
+.main-body{
+    background-image:url('../styles/tripify.jpeg');
+    background-repeat:no-repeat;
+    background-size:cover;
+    background-color:#45503b;
+}
 article{
     text-align: center;
-    background: url(tripify.jpeg) no-repeat;
-    background-size: cover;
+    margin:10%;
+    font-weight: bold;
     height: calc(100vh -80px);
+    opacity: 85%;
 }
 nav{
     background: #2A628F;
