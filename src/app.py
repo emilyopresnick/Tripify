@@ -57,6 +57,7 @@ def redirectPage():
     allSongs = topSongs | savedSongs | recSongs
     print(len(allSongs))
     print(allSongs)
+    print(sortByDuration(allSongs))
     
    
     return redirect(url_for('homePage', _external=True))
@@ -175,24 +176,18 @@ def getSavedSongs(headers, offset, amt):
         
 
 def getRecs(headers):
+    topTracks = getTopTracks(headers, "short")
+    trackKeys = topTracks.keys()
+    randomTracks = (random.choices(list(trackKeys), k=3))
+    randomTracks = ','.join(randomTracks)
     recSongs = {}
-
-    r = requests.get(BASE_URL + "recommendations/available-genre-seeds", headers=headers)
-    r=r.json()
-    availGenre = []
-
-    for genres in r['genres']:
-        availGenre.append(genres)
-    randomGenres = (random.choices(availGenre, k=3))
-    randomGenres = ','.join(randomGenres)
-    
-    r=requests.get(BASE_URL + "recommendations/?seed_genres=" + randomGenres + "&limit=50", headers=headers)
+    r=requests.get(BASE_URL + "recommendations/?seed_tracks=" + randomTracks + "&limit=50", headers=headers)
     r=r.json()
     for album in r['tracks']:
         id = album['id']
         name = album['name']
         artist =  album['artists'][0]['name']
-        duration = album['duration_ms']
+        duration = (album['duration_ms']) / 1000
 
         recSongs[id] = (name, artist, duration)
 
@@ -228,13 +223,19 @@ def getTopTracks(headers, timeRange):
     return tracks
 
 
-def getDuration(track):
-    return track['duration']
+def getDuration(trackID, dict):
+    value = dict[trackID]
+    return value[2]
 
 #sort by shortest to longest
 def sortByDuration(trackDict):
-    #TODO
-    return 0
+    b = trackDict.items()
+    print(type(b))
+    # b.sort(key=lambda x:x[1][2])
+    sorted_items = sorted(trackDict.items(), key=lambda x: x[1][2])
+    sorted_dict = dict(sorted_items)
+    print(sorted_dict)
+    return sorted_dict
 
 
 
