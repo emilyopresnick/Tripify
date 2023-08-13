@@ -70,12 +70,13 @@ def SpotifyLogin():
     return redirect(auth_url)
 
 #Logs out from Spotify
+@app.route("/logout")
 def SpotifyLogout():
     session.clear()
     if os.path.exists(".cache"):
         os.remove(".cache")
     webbrowser.open_new("https://accounts.spotify.com/en/logout")
-    return render_template('home.html', message="You have been logged out.")
+    return render_template('login.html')
 
 
 #Creates spotify oauth object
